@@ -13,29 +13,19 @@ import (
 func main() {
 
 	duck := Duck{bin: "duckdb"}
-	log.Printf("Duck db backend : %+v", duck)
 
 	router := gin.Default()
 
-	if true {
-		config := cors.DefaultConfig()
-		config.AllowOrigins = []string{"*"} //app.AllowOrigins
-		config.AllowHeaders = []string{"Origin"}
-		//config.AllowCredentials = app.AllowCredentials
-		router.Use(cors.New(config))
-	}
+	// configure cors
+	config := cors.DefaultConfig()
+	config.AllowOrigins = []string{"*"} //app.AllowOrigins
+	config.AllowHeaders = []string{"Origin"}
+	//config.AllowCredentials = app.AllowCredentials
+	router.Use(cors.New(config))
 
-	//Setup route group for the API v1
-	v1 := router.Group("/v1")
-	{
-		v1.POST("/exec", duck.ExecCtlr)
-
-		v1.GET("/", func(c *gin.Context) {
-			c.JSON(200, gin.H{"message": "Hello from datatask.io api proxy"})
-		})
-
-	}
-
+	// Define routes
+	router.POST("/exec", duck.ExecCtlr)
+	//default route handler
 	router.GET("/", func(c *gin.Context) {
 		c.JSON(200, gin.H{"message": "Hello from datatask.io api proxy"})
 	})
@@ -57,35 +47,35 @@ func (d *Duck) ExecCtlr(c *gin.Context) {
 		})
 		return
 	}
-	log.Printf("[INFO] Request body received : %+v", string(body))
 
 	resp, err := d.runQuery(string(body))
-	//log.Println(string(resp))
 	if err != nil {
-		log.Printf("[ERROR] Reading request %+v", err.Error())
+		log.Printf("[ERROR] Processing request %+v", err.Error())
 		c.JSON(http.StatusInternalServerError, gin.H{"status": "error", "message": err.Error()})
 		return
 	}
 
-	//c.JSON(200, gin.H{"message": fmt.Sprintf("Request body received : %+v", string(body))})
-	//c.JSON(200, gin.H{"query": string(body), "response": resp})
-	//c.HTML(http.StatusInternalServerError, resp, nil)
-	c.Data(200, "txt/json", resp)
+	//poor man json response building
+	returned := []byte("{ \"status\":\"ok\", \"query\":\"")
+	returned = append(returned, body...)
+	returned = append(returned, "\" ,\"data\": "...)
+	if len(resp) == 0 {
+		returned = append(returned, []byte("[]")...)
+	} else {
+		returned = append(returned, resp...)
+	}
+	returned = append(returned, []byte("}")...)
+
+	c.Data(200, "application/json", returned)
 }
 
 func (d *Duck) runQuery(query string) ([]byte, error) {
-	log.Printf("[INFO] Processing : %s", query)
+	log.Printf("[INFO] Processing with duckdb query : %s", query)
 	duckCmd := exec.Command("duckdb", "-json", ":memory:", query)
 	duckOut, err := duckCmd.Output()
 	if err != nil {
 		return []byte{}, err
 	}
-	/*var resp []interface{}
-	err = json.Unmarshal(duckOut, &resp)
-	if err != nil {
-		panic(err)
-	}*/
 
 	return duckOut, nil
-
 }
