@@ -47,26 +47,15 @@ func (d *Duck) ExecCtlr(c *gin.Context) {
 		})
 		return
 	}
-
-	resp, err := d.runQuery(string(body))
+	query := string(body)
+	resp, err := d.runQuery(query)
 	if err != nil {
 		log.Printf("[ERROR] Processing request %+v", err.Error())
 		c.JSON(http.StatusInternalServerError, gin.H{"status": "error", "message": err.Error()})
 		return
 	}
 
-	//poor man json response building
-	returned := []byte("{ \"status\":\"ok\", \"query\":\"")
-	returned = append(returned, body...)
-	returned = append(returned, "\" ,\"data\": "...)
-	if len(resp) == 0 {
-		returned = append(returned, []byte("[]")...)
-	} else {
-		returned = append(returned, resp...)
-	}
-	returned = append(returned, []byte("}")...)
-
-	c.Data(200, "application/json", returned)
+	c.Data(200, "application/json", d.buildJSONOutput(query, resp))
 }
 
 func (d *Duck) runQuery(query string) ([]byte, error) {
@@ -78,4 +67,18 @@ func (d *Duck) runQuery(query string) ([]byte, error) {
 	}
 
 	return duckOut, nil
+}
+
+func (d *Duck) buildJSONOutput(query string, resp []byte) []byte {
+	returned := []byte("{ \"status\":\"ok\", \"query\":\"")
+	returned = append(returned, []byte(query)...)
+	returned = append(returned, "\" ,\"data\": "...)
+	if len(resp) == 0 {
+		returned = append(returned, []byte("[]")...)
+	} else {
+		returned = append(returned, resp...)
+	}
+	returned = append(returned, []byte("}")...)
+
+	return returned
 }
