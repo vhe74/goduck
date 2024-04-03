@@ -38,7 +38,7 @@ func (d *Duck) ExecCtlr(c *gin.Context) {
 }
 
 func (d *Duck) runQuery(query string) ([]byte, error) {
-	log.Printf("[INFO] Processing with duckdb query : %s", query)
+	log.Printf("[INFO] Processing with duckdb query : \n%s", query)
 
 	duckCmd := exec.Command("duckdb", "-json", ":memory:", query)
 	var stdout bytes.Buffer
